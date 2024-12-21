@@ -1,32 +1,26 @@
 #define _POSIX_C_SOURCE 200809L
-#include<stdlib.h>
-#include<stdio.h>
-#include<string.h>
-#include<unistd.h>
-#include<fcntl.h>
-#include<errno.h>
-#include<signal.h>
-#ifdef __OpenBSD__
-#define SIGPLUS			SIGUSR1+1
-#define SIGMINUS		SIGUSR1-1
-#else
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
+
 #define SIGPLUS			SIGRTMIN
 #define SIGMINUS		SIGRTMIN
-#endif
-#define LENGTH(X)               (sizeof(X) / sizeof (X[0]))
-#define CMDLENGTH		50
-#define MIN( a, b ) ( ( a < b) ? a : b )
-#define STATUSLENGTH (LENGTH(blocks) * CMDLENGTH + 1)
+#define LENGTH(X)		(sizeof(X) / sizeof (X[0]))
+#define CMDLENGTH		300
+#define MIN(a, b)		( ( a < b) ? a : b )
+#define STATUSLENGTH	(LENGTH(blocks) * CMDLENGTH + 1)
 
 typedef struct {
-	char* icon;
 	char* command;
 	unsigned int interval;
 	unsigned int signal;
 } Block;
-#ifndef __OpenBSD__
+
 void dummysighandler(int num);
-#endif
 void sighandler(int num);
 void getcmds(int time);
 void getsigcmds(unsigned int signal);
@@ -35,9 +29,7 @@ void sighandler(int signum);
 int getstatus(char *str, char *last);
 void statusloop();
 void termhandler();
-void pstdout();
-void psomebar();
-static void (*writestatus) () = psomebar;
+void writestatus();
 
 #include "blocks.h"
 
@@ -45,17 +37,14 @@ static char statusbar[LENGTH(blocks)][CMDLENGTH] = {0};
 static char statusstr[2][STATUSLENGTH];
 static int statusContinue = 1;
 static int returnStatus = 0;
-static char somebarPath[128];
-static int somebarFd = -1;
 
 //opens process *cmd and stores output in *output
 void getcmd(const Block *block, char *output)
 {
-	strcpy(output, block->icon);
 	FILE *cmdf = popen(block->command, "r");
 	if (!cmdf)
 		return;
-	int i = strlen(block->icon);
+	int i = 0;
 	fgets(output+i, CMDLENGTH-i-delimLen, cmdf);
 	i = strlen(output);
 	if (i == 0) {
@@ -96,12 +85,10 @@ void getsigcmds(unsigned int signal)
 void setupsignals()
 {
 	struct sigaction sa = {0};
-#ifndef __OpenBSD__
 	/* initialize all real time signals with dummy handler */
 	sa.sa_handler = dummysighandler;
 	for (int i = SIGRTMIN; i <= SIGRTMAX; i++)
 		sigaction(i, &sa, NULL);
-#endif
 
 	sa.sa_handler = sighandler;
 	for (unsigned int i = 0; i < LENGTH(blocks); i++) {
@@ -121,34 +108,13 @@ int getstatus(char *str, char *last)
 	return strcmp(str, last);//0 if they are the same
 }
 
-void pstdout()
+void writestatus()
 {
 	if (!getstatus(statusstr[0], statusstr[1]))//Only write out if text has changed.
 		return;
 	printf("%s\n",statusstr[0]);
 	fflush(stdout);
 }
-
-
-void psomebar()
-{
-	if (!getstatus(statusstr[0], statusstr[1]))//Only write out if text has changed.
-		return;
-	if (somebarFd < 0) {
-		somebarFd = open(somebarPath, O_WRONLY|O_CLOEXEC);
-		if (somebarFd < 0 && errno == ENOENT) {
-			// assume somebar is not ready yet
-			sleep(1);
-			somebarFd = open(somebarPath, O_WRONLY|O_CLOEXEC);
-		}
-		if (somebarFd < 0) {
-			perror("open");
-			return;
-		}
-	}
-	dprintf(somebarFd, "status %s\n", statusstr[0]);
-}
-
 
 void statusloop()
 {
@@ -164,13 +130,11 @@ void statusloop()
 	}
 }
 
-#ifndef __OpenBSD__
 /* this signal handler should do nothing */
 void dummysighandler(int signum)
 {
     return;
 }
-#endif
 
 void sighandler(int signum)
 {
@@ -183,33 +147,12 @@ void termhandler()
 	statusContinue = 0;
 }
 
-void sigpipehandler()
-{
-	close(somebarFd);
-	somebarFd = -1;
-}
-
 int main(int argc, char** argv)
 {
-	for (int i = 0; i < argc; i++) {//Handle command line arguments
-		if (!strcmp("-d",argv[i]))
-			strncpy(delim, argv[++i], delimLen);
-		else if (!strcmp("-p",argv[i]))
-			writestatus = pstdout;
-		else if (!strcmp("-s",argv[i]))
-			strcpy(somebarPath, argv[++i]);
-	}
-
-	if (!strlen(somebarPath)) {
-		strcpy(somebarPath, getenv("XDG_RUNTIME_DIR"));
-		strcat(somebarPath, "/somebar-0");
-	}
-
 	delimLen = MIN(delimLen, strlen(delim));
 	delim[delimLen++] = '\0';
 	signal(SIGTERM, termhandler);
 	signal(SIGINT, termhandler);
-	signal(SIGPIPE, sigpipehandler);
 	statusloop();
 	return 0;
 }

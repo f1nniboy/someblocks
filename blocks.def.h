@@ -1,16 +1,13 @@
-//Modify this file to change what commands output to your statusbar, and recompile using the make command.
 static const Block blocks[] = {
-	/*Icon*/	/*Command*/		/*Update Interval*/	/*Update Signal*/
-	{"Mem:", "free -h | awk '/^Mem/ { print $3\"/\"$2 }' | sed s/i//g",	30,		0},
+	/* 	cmd																				update interval		update signal */
+	{	"/home/etc/blocks/song",														0,					4},
 
-	{"", "date '+%b %d (%a) %I:%M%p'",					5,		0},
-	
-	/* Updates whenever "pkill -SIGRTMIN+10 someblocks" is ran */
-	/* {"", "date '+%b %d (%a) %I:%M%p'",					0,		10}, */
+	{	"/home/etc/blocks/volume @DEFAULT_AUDIO_SOURCE@ '^fg(a6e3a1)󰍬' '^fg(eba0ac)󰍭'",	0,					3},
+
+	{	"/home/etc/blocks/volume @DEFAULT_AUDIO_SINK@ '^fg(89dceb) ' '^fg(eba0ac) '",	0,					3},
+
+	{	"date '+%d.%m.%Y, %H:%M'",														15,					0},
 };
 
-
-
-//sets delimeter between status commands. NULL character ('\0') means no delimeter.
-static char delim[] = " | ";
-static unsigned int delimLen = 5;
+static char delim[] = "^fg(6c7086) | ^fg()";
+static int delimLen = 100;
