@@ -31,7 +31,7 @@ void statusloop();
 void termhandler();
 void writestatus();
 
-#include "blocks.h"
+#include "config.h"
 
 static char statusbar[LENGTH(blocks)][CMDLENGTH] = {0};
 static char statusstr[2][STATUSLENGTH];
@@ -41,17 +41,18 @@ static int returnStatus = 0;
 //opens process *cmd and stores output in *output
 void getcmd(const Block *block, char *output)
 {
+	output[0] = '\0';
+	
 	FILE *cmdf = popen(block->command, "r");
 	if (!cmdf)
 		return;
-	int i = 0;
-	fgets(output+i, CMDLENGTH-i-delimLen, cmdf);
-	i = strlen(output);
-	if (i == 0) {
-		//return if block and command output are both empty
-		pclose(cmdf);
+	
+	fgets(output, CMDLENGTH-delimLen, cmdf);
+	int i = strlen(output);
+
+	if (i == 0)
 		return;
-	}
+
 	if (delim[0] != '\0') {
 		//only chop off newline if one is present at the end
 		i = output[i-1] == '\n' ? i-1 : i;
