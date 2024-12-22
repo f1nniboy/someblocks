@@ -2,10 +2,10 @@ PREFIX ?= /usr/local
 MANPREFIX ?= $(PREFIX)/share/man
 CC ?= cc
 
-output: someblocks.c blocks.def.h blocks.h
+output: someblocks.c config.def.h config.h
 	${CC}  someblocks.c $(LDFLAGS) -o someblocks
-blocks.h:
-	cp blocks.def.h $@
+config.h:
+	cp config.def.h $@
 
 
 clean:
